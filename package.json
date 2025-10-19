@@ -1,0 +1,29 @@
+{
+  "name": "data-nadhi-internal-server",
+  "version": "1.0.0",
+  "description": "Internal server for Phase 00",
+  "homepage": "https://github.com/Data-ARENA-Space/data-nadhi-internal-server#readme",
+  "bugs": {
+    "url": "https://github.com/Data-ARENA-Space/data-nadhi-internal-server/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Data-ARENA-Space/data-nadhi-internal-server.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.0",
+    "express": "^4.18.2",
+    "mongodb": "^5.6.0",
+    "redis": "^4.6.0"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
