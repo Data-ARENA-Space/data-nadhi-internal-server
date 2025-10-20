@@ -4,15 +4,25 @@ const {
   createOrganisation, 
   createProject, 
   createPipeline, 
-  updateProcessorId, 
-  updatePipelineActiveStatus 
+  updateOrganisationProcessorId,
+  updateProjectProcessorId,
+  updatePipelineProcessorId,
+  updatePipelineActiveStatus,
+  updateStartNodeId
 } = require('../controllers/entities.controller');
 
-// Entity Management API routes - RESTful pattern
+// Organisation routes
 router.post('/organisation', createOrganisation);
-router.post('/project', createProject);
-router.post('/pipeline', createPipeline);
-router.put('/processor-id', updateProcessorId);
-router.put('/pipeline/active-status', updatePipelineActiveStatus);
+router.put('/organisation/:orgId/processor-id', updateOrganisationProcessorId);
+
+// Project routes (nested under organisation)
+router.post('/organisation/:orgId/project', createProject);
+router.put('/organisation/:orgId/project/:projectId/processor-id', updateProjectProcessorId);
+
+// Pipeline routes (nested under organisation and project)
+router.post('/organisation/:orgId/project/:projectId/pipeline', createPipeline);
+router.put('/organisation/:orgId/project/:projectId/pipeline/:pipelineId/processor-id', updatePipelineProcessorId);
+router.put('/organisation/:orgId/project/:projectId/pipeline/:pipelineId/active-status', updatePipelineActiveStatus);
+router.put('/organisation/:orgId/project/:projectId/pipeline/:pipelineId/start-node-id', updateStartNodeId);
 
 module.exports = router;

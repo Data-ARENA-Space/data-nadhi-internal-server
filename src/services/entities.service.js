@@ -30,6 +30,17 @@ const getProjectById = async (orgId, projectId) => {
   return project;
 }
 
+const getPipelineById = async (orgId, projectId, pipelineId) => {
+  // Check cache first
+  let pipeline = await cacheDal.getPipeline(orgId, projectId, pipelineId);
+  if (pipeline) return pipeline;
+
+  pipeline = await mongoDal.getPipeline(orgId, projectId, pipelineId);
+  if (pipeline) {
+    cacheDal.setPipeline(orgId, projectId, pipelineId, pipeline, ENTITY_CACHE_TTL_SECONDS);
+  }
+  return pipeline;
+}
 
 const getOrganisationSecret = async (orgId) => {
   let orgSecret = await cacheDal.getOrganisationSecret(orgId);
@@ -74,8 +85,8 @@ const createOrganisation = async (organisationName, processorId) => {
 }
 
 const createProject = async (organisationId, projectName, processorId) => {
-  // Verify organisation exists
-  const org = await mongoDal.getOrganisation(organisationId);
+  // Verify organisation exists using cached service
+  const org = await getOrganisationById(organisationId);
   if (!org) {
     throw new Error('Organisation not found');
   }
@@ -100,13 +111,13 @@ const createProject = async (organisationId, projectName, processorId) => {
 }
 
 const createPipeline = async (organisationId, projectId, pipelineName, pipelineCode, active, processorId) => {
-  // Verify organisation and project exist
-  const org = await mongoDal.getOrganisation(organisationId);
+  // Verify organisation and project exist using cached services
+  const org = await getOrganisationById(organisationId);
   if (!org) {
     throw new Error('Organisation not found');
   }
 
-  const project = await mongoDal.getProject(organisationId, projectId);
+  const project = await getProjectById(organisationId, projectId);
   if (!project) {
     throw new Error('Project not found');
   }
@@ -131,42 +142,58 @@ const createPipeline = async (organisationId, projectId, pipelineName, pipelineC
 }
 
 // Entity update functions
-const updateEntityProcessorId = async (entityName, entityId, processorId) => {
-  let updateResult;
-
-  switch (entityName.toLowerCase()) {
-    case 'organisation':
-      updateResult = await mongoDal.updateOrganisation(entityId, { processorId });
-      cacheDal.deleteOrgKey(entityId);
-      break;
-
-    case 'project':
-      const project = await mongoDal.findProjectById(entityId);
-      if (!project) {
-        throw new Error('Project not found');
-      }
-      updateResult = await mongoDal.updateProject(project.organisationId, entityId, { processorId });
-      cacheDal.deleteProjectKey(project.organisationId, entityId);
-      break;
-
-    case 'pipeline':
-      const pipeline = await mongoDal.findPipelineById(entityId);
-      if (!pipeline) {
-        throw new Error('Pipeline not found');
-      }
-      updateResult = await mongoDal.updatePipeline(pipeline.organisationId, pipeline.projectId, entityId, { processorId });
-      cacheDal.deletePipelineKeyById(pipeline.organisationId, pipeline.projectId, entityId);
-      cacheDal.deletePipelineKeyByCode(pipeline.organisationId, pipeline.projectId, pipeline.pipelineCode);
-      break;
-
-    default:
-      throw new Error('Invalid entityName. Must be organisation, project, or pipeline');
+const updateOrganisationProcessorId = async (orgId, processorId) => {
+  // Verify organisation exists using cached service
+  const org = await getOrganisationById(orgId);
+  if (!org) {
+    throw new Error('Organisation not found');
   }
 
+  const updateResult = await mongoDal.updateOrganisation(orgId, { processorId });
+  
   if (updateResult.matchedCount === 0) {
-    throw new Error('Entity not found');
+    throw new Error('Organisation not found');
   }
 
+  // Clear cache for this organisation
+  cacheDal.deleteOrgKey(orgId);
+  return true;
+}
+
+const updateProjectProcessorId = async (orgId, projectId, processorId) => {
+  // Verify project exists using cached service  
+  const project = await getProjectById(orgId, projectId);
+  if (!project) {
+    throw new Error('Project not found');
+  }
+
+  const updateResult = await mongoDal.updateProject(orgId, projectId, { processorId });
+  
+  if (updateResult.matchedCount === 0) {
+    throw new Error('Project not found');
+  }
+
+  // Clear cache for this project
+  cacheDal.deleteProjectKey(orgId, projectId);
+  return true;
+}
+
+const updatePipelineProcessorId = async (orgId, projectId, pipelineId, processorId) => {
+  // Verify pipeline exists using mongo service (no cached pipeline getter available)
+  const pipeline = await getPipelineById(orgId, projectId, pipelineId);
+  if (!pipeline) {
+    throw new Error('Pipeline not found');
+  }
+
+  const updateResult = await mongoDal.updatePipeline(orgId, projectId, pipelineId, { processorId });
+  
+  if (updateResult.matchedCount === 0) {
+    throw new Error('Pipeline not found');
+  }
+
+  // Clear cache for this pipeline (if cache methods existed)
+  cacheDal.deletePipelineKeyById(orgId, projectId, pipelineId);
+  cacheDal.deletePipelineKeyByCode(orgId, projectId, pipeline.pipelineCode);
   return true;
 }
 
@@ -175,19 +202,39 @@ const updatePipelineActiveStatus = async (organisationId, projectId, pipelineId,
     throw new Error('active must be a boolean value');
   }
 
-  const pipeline = await mongoDal.findPipelineById(pipelineId);
+  // Verify pipeline exists using proper orgId and projectId
+  const pipeline = await getPipelineById(organisationId, projectId, pipelineId);
   if (!pipeline) {
     throw new Error('Pipeline not found');
   }
 
   const updateResult = await mongoDal.updatePipeline(organisationId, projectId, pipelineId, { active });
+  
+  if (updateResult.matchedCount === 0) {
+    throw new Error('Pipeline not found');
+  }
+
+  // Clear cache for this pipeline (if cache methods existed)
   cacheDal.deletePipelineKeyById(organisationId, projectId, pipelineId);
   cacheDal.deletePipelineKeyByCode(organisationId, projectId, pipeline.pipelineCode);
+  return true;
+}
+
+const updateStartNodeId = async (organisationId, projectId, pipelineId, startNodeId) => {
+  const pipeline = await getPipelineById(organisationId, projectId, pipelineId);
+  if (!pipeline) {
+    throw new Error('Pipeline not found');
+  }
+
+  const updateResult = await mongoDal.updatePipeline(organisationId, projectId, pipelineId, { startNodeId });
 
   if (updateResult.matchedCount === 0) {
     throw new Error('Pipeline not found');
   }
 
+  // Clear cache for this pipeline (if cache methods existed)
+  cacheDal.deletePipelineKeyById(organisationId, projectId, pipelineId);
+  cacheDal.deletePipelineKeyByCode(organisationId, projectId, pipeline.pipelineCode);
   return true;
 }
 
@@ -197,6 +244,9 @@ module.exports = {
   createOrganisation,
   createProject,
   createPipeline,
-  updateEntityProcessorId,
-  updatePipelineActiveStatus
+  updateOrganisationProcessorId,
+  updateProjectProcessorId,
+  updatePipelineProcessorId,
+  updatePipelineActiveStatus,
+  updateStartNodeId
 };

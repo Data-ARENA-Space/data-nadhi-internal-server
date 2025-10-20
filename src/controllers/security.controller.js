@@ -2,12 +2,9 @@ const { createApiKey, validateApiKey } = require('../services/apiKey.service');
 
 const createApiKeyController = async (req, res) => {
   try {
-    const { organisationId, projectId } = req.body;
-    if (!organisationId || !projectId) {
-      return res.status(400).json({ error: 'organisationId and projectId required' });
-    }
-
-    const apiKey = await createApiKey(organisationId, projectId);
+    const { orgId, projectId } = req.params;
+    
+    const apiKey = await createApiKey(orgId, projectId);
     res.json({ apiKey });
   } catch (err) {
     console.error('Create API Key error:', err);

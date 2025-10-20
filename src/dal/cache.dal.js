@@ -1,4 +1,4 @@
-const { del } = require("express/lib/application");
+const { set } = require("../app");
 
 let redis = null;
 
@@ -34,6 +34,16 @@ const getProject = async (orgId, projectId) => {
 const setProject = async (orgId, projectId, data, ttl = 1800) => {
   if (!redis || !redis.connected) return;
   await redis.set(`datanadhiserver:org:${orgId}:prj:${projectId}`, data, ttl);
+}
+
+const getPipeline = async (orgId, projectId, pipelineId) => {
+  if (!redis || !redis.connected) return null;
+  return await redis.get(`datanadhiserver:org:${orgId}:prj:${projectId}:pl:${pipelineId}`);
+}
+
+const setPipeline = async (orgId, projectId, pipelineId, data, ttl = 1800) => {
+  if (!redis || !redis.connected) return;
+  await redis.set(`datanadhiserver:org:${orgId}:prj:${projectId}:pl:${pipelineId}`, data, ttl);
 }
 
 
@@ -87,6 +97,8 @@ module.exports = {
   setOrganisation,
   getProject,
   setProject,
+  getPipeline,
+  setPipeline,
   getOrganisationSecret,
   setOrganisationSecret,
   getProjectSecret,

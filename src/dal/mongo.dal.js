@@ -12,6 +12,11 @@ const getOrganisation = (orgId) => {
   return db.collection('Organisations').findOne({ organisationId: orgId });
 }
 
+const getPipeline = (orgId, projectId, pipelineId) => {
+  const db = mongoService.db();
+  return db.collection('Pipelines').findOne({ pipelineId, projectId, organisationId: orgId });
+}
+
 const createOrganisation = (orgData) => {
   const db = mongoService.db();
   return db.collection('Organisations').insertOne(orgData);
@@ -64,5 +69,6 @@ module.exports = {
   updatePipeline,
   findProjectById,
   findPipelineById,
+  getPipeline,
   mongoService 
 };

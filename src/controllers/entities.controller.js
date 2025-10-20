@@ -2,8 +2,11 @@ const {
   createOrganisation: createOrganisationService,
   createProject: createProjectService,
   createPipeline: createPipelineService,
-  updateEntityProcessorId,
-  updatePipelineActiveStatus: updatePipelineActiveStatusService
+  updateOrganisationProcessorId: updateOrganisationProcessorIdService,
+  updateProjectProcessorId: updateProjectProcessorIdService,
+  updatePipelineProcessorId: updatePipelineProcessorIdService,
+  updatePipelineActiveStatus: updatePipelineActiveStatusService,
+  updateStartNodeId: updateStartNodeIdService
 } = require('../services/entities.service');
 const MongoService = require('../services/mongo.service');
 
@@ -29,13 +32,14 @@ const createOrganisation = async (req, res) => {
 
 const createProject = async (req, res) => {
   try {
-    const { organisationId, projectName, processorId } = req.body;
-    if (!organisationId || !projectName) {
-      return res.status(400).json({ error: 'organisationId and projectName required' });
+    const { orgId } = req.params;
+    const { projectName, processorId } = req.body;
+    if (!projectName) {
+      return res.status(400).json({ error: 'projectName required' });
     }
 
     const projectId = await mongo.withRetry(async () => {
-      return await createProjectService(organisationId, projectName, processorId);
+      return await createProjectService(orgId, projectName, processorId);
     });
 
     res.json({ projectId });
@@ -51,13 +55,14 @@ const createProject = async (req, res) => {
 
 const createPipeline = async (req, res) => {
   try {
-    const { organisationId, projectId, pipelineName, pipelineCode, active, processorId } = req.body;
-    if (!organisationId || !projectId || !pipelineName || !pipelineCode) {
-      return res.status(400).json({ error: 'organisationId, projectId, pipelineName, and pipelineCode required' });
+    const { orgId, projectId } = req.params;
+    const { pipelineName, pipelineCode, active, processorId } = req.body;
+    if (!pipelineName || !pipelineCode) {
+      return res.status(400).json({ error: 'pipelineName and pipelineCode required' });
     }
 
     const pipelineId = await mongo.withRetry(async () => {
-      return await createPipelineService(organisationId, projectId, pipelineName, pipelineCode, active, processorId);
+      return await createPipelineService(orgId, projectId, pipelineName, pipelineCode, active, processorId);
     });
 
     res.json({ pipelineId });
@@ -71,22 +76,69 @@ const createPipeline = async (req, res) => {
   }
 }
 
-const updateProcessorId = async (req, res) => {
+const updateOrganisationProcessorId = async (req, res) => {
   try {
-    const { entityName, entityId, processorId } = req.body;
-    if (!entityName || !entityId || !processorId) {
-      return res.status(400).json({ error: 'entityName, entityId, and processorId required' });
+    const { orgId } = req.params;
+    const { processorId } = req.body;
+    if (!processorId) {
+      return res.status(400).json({ error: 'processorId required' });
     }
 
     await mongo.withRetry(async () => {
-      return await updateEntityProcessorId(entityName, entityId, processorId);
+      return await updateOrganisationProcessorIdService(orgId, processorId);
     });
 
     res.json({ success: true });
   } catch (err) {
-    console.error('Update ProcessorId error:', err);
-    if (err.message.includes('not found') || err.message.includes('Invalid entityName')) {
-      res.status(400).json({ error: err.message });
+    console.error('Update Organisation ProcessorId error:', err);
+    if (err.message.includes('not found')) {
+      res.status(404).json({ error: err.message });
+    } else {
+      res.status(500).json({ error: err.message });
+    }
+  }
+}
+
+const updateProjectProcessorId = async (req, res) => {
+  try {
+    const { orgId, projectId } = req.params;
+    const { processorId } = req.body;
+    if (!processorId) {
+      return res.status(400).json({ error: 'processorId required' });
+    }
+
+    await mongo.withRetry(async () => {
+      return await updateProjectProcessorIdService(orgId, projectId, processorId);
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Update Project ProcessorId error:', err);
+    if (err.message.includes('not found')) {
+      res.status(404).json({ error: err.message });
+    } else {
+      res.status(500).json({ error: err.message });
+    }
+  }
+}
+
+const updatePipelineProcessorId = async (req, res) => {
+  try {
+    const { orgId, projectId, pipelineId } = req.params;
+    const { processorId } = req.body;
+    if (!processorId) {
+      return res.status(400).json({ error: 'processorId required' });
+    }
+
+    await mongo.withRetry(async () => {
+      return await updatePipelineProcessorIdService(orgId, projectId, pipelineId, processorId);
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Update Pipeline ProcessorId error:', err);
+    if (err.message.includes('not found')) {
+      res.status(404).json({ error: err.message });
     } else {
       res.status(500).json({ error: err.message });
     }
@@ -95,20 +147,44 @@ const updateProcessorId = async (req, res) => {
 
 const updatePipelineActiveStatus = async (req, res) => {
   try {
-    const { organisationId, projectId, pipelineId, active } = req.body;
-    if (!organisationId || !projectId || !pipelineId || active === undefined) {
-      return res.status(400).json({ error: 'organisationId, projectId, pipelineId, and active required' });
+    const { orgId, projectId, pipelineId } = req.params;
+    const { active } = req.body;
+    if (active === undefined) {
+      return res.status(400).json({ error: 'active status required' });
     }
 
     await mongo.withRetry(async () => {
-      return await updatePipelineActiveStatusService(organisationId, projectId, pipelineId, active);
+      return await updatePipelineActiveStatusService(orgId, projectId, pipelineId, active);
     });
 
     res.json({ success: true });
   } catch (err) {
     console.error('Update Pipeline Active Status error:', err);
     if (err.message === 'Pipeline not found' || err.message.includes('boolean')) {
-      res.status(400).json({ error: err.message });
+      res.status(404).json({ error: err.message });
+    } else {
+      res.status(500).json({ error: err.message });
+    }
+  }
+}
+
+const updateStartNodeId = async (req, res) => {
+  try {
+    const { orgId, projectId, pipelineId } = req.params;
+    const { startNodeId } = req.body;
+    if (!startNodeId) {
+      return res.status(400).json({ error: 'startNodeId required' });
+    }
+
+    await mongo.withRetry(async () => {
+      return await updateStartNodeIdService(orgId, projectId, pipelineId, startNodeId);
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Update Start Node ID error:', err);
+    if (err.message === 'Pipeline not found') {
+      res.status(404).json({ error: err.message });
     } else {
       res.status(500).json({ error: err.message });
     }
@@ -119,6 +195,9 @@ module.exports = {
   createOrganisation,
   createProject,
   createPipeline,
-  updateProcessorId,
-  updatePipelineActiveStatus
+  updateOrganisationProcessorId,
+  updateProjectProcessorId,
+  updatePipelineProcessorId,
+  updatePipelineActiveStatus,
+  updateStartNodeId
 };

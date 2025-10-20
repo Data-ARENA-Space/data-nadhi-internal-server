@@ -3,7 +3,7 @@ const router = express.Router();
 const { createApiKeyController, validateApiKeyController } = require('../controllers/security.controller');
 
 // Security API routes - RESTful pattern
-router.post('/api-key', createApiKeyController);
+router.post('/organisation/:orgId/project/:projectId/api-key', createApiKeyController);
 router.post('/api-key/validate', validateApiKeyController);
 
 module.exports = router;
