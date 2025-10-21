@@ -85,6 +85,16 @@ const deletePipelineKeyByCode = async (orgId, projectId, pipelineCode) => {
   await redis.deleteKeysContaining(`org:${orgId}:prj:${projectId}:plc:${pipelineCode}`);
 }
 
+const getIntegrationConnector = async (orgId, projectId, connectorId) => {
+  if (!redis || !redis.connected) return null;
+  return await redis.safe_get(`datanadhiserver:org:${orgId}:prj:${projectId}:ic:${connectorId}`);
+}
+
+const setIntegrationConnector = async (orgId, projectId, connectorId, data, ttl = 1800) => {
+  if (!redis || !redis.connected) return;
+  await redis.safe_set(`datanadhiserver:org:${orgId}:prj:${projectId}:ic:${connectorId}`, data, ttl);
+}
+
 
 
 module.exports = {
@@ -103,6 +113,8 @@ module.exports = {
   setProjectSecret,
   deleteOrgKey,
   deleteProjectKey,
+  getIntegrationConnector,
+  setIntegrationConnector,
   deletePipelineKeyByCode,
   deletePipelineKeyById
 };

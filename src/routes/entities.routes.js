@@ -9,8 +9,11 @@ const {
   updatePipelineProcessorId,
   updatePipelineActiveStatus,
   updateStartNodeId,
+  createIntegrationConnector,
+  createIntegrationTarget,
   createPipelineNodesBulk
 } = require('../controllers/entities.controller');
+const { route } = require('./health.routes');
 
 // Organisation routes
 router.post('/organisation', createOrganisation);
@@ -28,5 +31,8 @@ router.put('/organisation/:orgId/project/:projectId/pipeline/:pipelineId/start-n
 
 // Pipeline Node routes (nested under organisation, project and pipeline)
 router.post('/organisation/:orgId/project/:projectId/pipeline/:pipelineId/nodes/bulk', createPipelineNodesBulk);
+
+router.post('/organisation/:orgId/project/:projectId/integration-connector', createIntegrationConnector);
+router.post('/organisation/:orgId/project/:projectId/pipeline/:pipelineId/integration-target', createIntegrationTarget);
 
 module.exports = router;

@@ -111,12 +111,6 @@ const createProject = async (organisationId, projectName, processorId) => {
 }
 
 const createPipeline = async (organisationId, projectId, pipelineName, pipelineCode, active, processorId) => {
-  // Verify organisation and project exist using cached services
-  const org = await getOrganisationById(organisationId);
-  if (!org) {
-    throw new Error('Organisation not found');
-  }
-
   const project = await getProjectById(organisationId, projectId);
   if (!project) {
     throw new Error('Project not found');
@@ -261,6 +255,56 @@ const createPipelineNodesBulk = async (organisationId, projectId, pipelineId, pi
   return nodesData.length;
 }
 
+const getIntegrationConnector = async (organisationId, projectId, connectorId) => {
+  let integrationConnector = await cacheDal.getIntegrationConnector(organisationId, projectId, connectorId);
+  if (integrationConnector) return integrationConnector;
+
+  integrationConnector = await mongoDal.getIntegrationConnector(organisationId, projectId, connectorId);
+  if (integrationConnector) {
+    cacheDal.setIntegrationConnector(organisationId, projectId, connectorId, integrationConnector, ENTITY_CACHE_TTL_SECONDS);
+  }
+  return integrationConnector;
+}
+
+const createIntegrationConnector = async (organisationId, projectId, connectorName, integrationType, integrationCredentials) => {
+  const connectorId = crypto.randomUUID();
+  const encryptedCreds = encryptAesGcm(JSON.stringify(integrationCredentials || {}), SEC_DB);
+  const project = await getProjectById(organisationId, projectId);
+  if (!project) throw new Error('Project not found');
+  const integrationConnectorData = {
+    organisationId,
+    projectId,
+    connectorId,
+    connectorName,
+    integrationType,
+    encryptedCredentials: encryptedCreds
+  };
+  await mongoDal.createIntegrationConnector(integrationConnectorData);
+  return connectorId;
+}
+
+const createIntegrationTarget = async (organisationId, projectId, connectorId, pipelineId, destinationName, destinationParams) => {
+  // Validate connector exists
+  const connector = await getIntegrationConnector(organisationId, projectId, connectorId);
+  if (!connector) throw new Error('Connector not found');
+  // Validate pipeline exists
+  const pipeline = await getPipelineById(organisationId, projectId, pipelineId);
+  if (!pipeline) throw new Error('Pipeline not found');
+
+  const targetId = crypto.randomUUID();
+  const integrationTargetData = {
+    organisationId,
+    projectId,
+    targetId,
+    connectorId,
+    pipelineId,
+    destinationName,
+    destinationParams: destinationParams || {}
+  };
+  await mongoDal.createIntegrationTarget(integrationTargetData);
+  return targetId;
+}
+
 module.exports = { 
   getOrganisationSecret, 
   getProjectSecret,
@@ -272,5 +316,7 @@ module.exports = {
   updatePipelineProcessorId,
   updatePipelineActiveStatus,
   updateStartNodeId,
-  createPipelineNodesBulk
+  createIntegrationConnector,
+  createPipelineNodesBulk,
+  createIntegrationTarget
 };

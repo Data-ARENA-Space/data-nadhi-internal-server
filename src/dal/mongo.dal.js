@@ -68,6 +68,21 @@ const deletePipelineNodesByPipelineId = (organisationId, projectId, pipelineId) 
   return db.collection('PipelineNodes').deleteMany({ organisationId, projectId, pipelineId });
 }
 
+const createIntegrationConnector = (integrationConnectorData) => {
+    const db = mongoService.db()
+    return db.collection('IntegrationConnectors').insertOne(integrationConnectorData);
+}
+
+const getIntegrationConnector = (organisationId, projectId, connectorId) => {
+    const db = mongoService.db()
+    return db.collection('IntegrationConnectors').findOne({organisationId, projectId, connectorId})
+}
+
+const createIntegrationTarget = (integrationTargetData) => {
+    const db = mongoService.db()
+    return db.collection('IntegrationTargets').insertOne(integrationTargetData);
+}
+
 module.exports = { 
   getProject, 
   getOrganisation, 
@@ -81,6 +96,9 @@ module.exports = {
   deletePipelineNodesByPipelineId,
   createPipelineNodesBulk,
   findPipelineById,
+  createIntegrationConnector,
+  getIntegrationConnector,
+  createIntegrationTarget,
   getPipeline,
   mongoService 
 };

@@ -1,3 +1,4 @@
+const req = require('express/lib/request');
 const { 
   createOrganisation: createOrganisationService,
   createProject: createProjectService,
@@ -7,8 +8,10 @@ const {
   updatePipelineProcessorId: updatePipelineProcessorIdService,
   updatePipelineActiveStatus: updatePipelineActiveStatusService,
   updateStartNodeId: updateStartNodeIdService,
-  createPipelineNodesBulk: createPipelineNodesBulkService
+  createPipelineNodesBulk: createPipelineNodesBulkService,
+  createIntegrationConnector: createIntegrationConnectorService
 } = require('../services/entities.service');
+const { createIntegrationTarget: createIntegrationTargetService } = require('../services/entities.service');
 const MongoService = require('../services/mongo.service');
 
 const mongo = new MongoService();
@@ -69,7 +72,7 @@ const createPipeline = async (req, res) => {
     res.json({ pipelineId });
   } catch (err) {
     console.error('Create Pipeline error:', err);
-    if (err.message === 'Organisation not found' || err.message === 'Project not found') {
+    if (err.message === 'Project not found') {
       res.status(404).json({ error: err.message });
     } else {
       res.status(500).json({ error: err.message });
@@ -216,6 +219,50 @@ const createPipelineNodesBulk = async (req, res) => {
   }
 }
 
+const createIntegrationConnector = async (req, res) => {
+  try {
+    const { orgId, projectId } = req.params;
+    const { connectorName, integrationType, integrationParams } = req.body;
+    if (!connectorName || !integrationType) {
+      return res.status(400).json({ error: 'connectorName and integrationType required' });
+    }
+
+    const connectorId = await mongo.withRetry(async () => {
+      return await createIntegrationConnectorService(orgId, projectId, connectorName, integrationType, integrationParams);
+    });
+
+    return res.json({ connectorId });
+  } catch (err) {
+    console.error('Create Integration Connector error: ', err);
+    if (err.message === 'Project not found') {
+      return res.status(404).json({ error: err.message });
+    }
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+const createIntegrationTarget = async (req, res) => {
+  try {
+    const { orgId, projectId, pipelineId } = req.params;
+    const { connectorId, destinationName, destinationParams } = req.body;
+    if (!connectorId || !pipelineId) {
+      return res.status(400).json({ error: 'connectorId and pipelineId required' });
+    }
+
+    const targetId = await mongo.withRetry(async () => {
+      return await createIntegrationTargetService(orgId, projectId, connectorId, pipelineId, destinationName, destinationParams);
+    });
+
+    return res.json({ targetId });
+  } catch (err) {
+    console.error('Create Integration Target error: ', err);
+    if (err.message === 'Connector not found' || err.message === 'Pipeline not found') {
+      return res.status(404).json({ error: err.message });
+    }
+    return res.status(500).json({ error: err.message });
+  }
+};
+
 module.exports = {
   createOrganisation,
   createProject,
@@ -225,5 +272,7 @@ module.exports = {
   updatePipelineProcessorId,
   updatePipelineActiveStatus,
   updateStartNodeId,
-  createPipelineNodesBulk
+  createPipelineNodesBulk,
+  createIntegrationConnector,
+  createIntegrationTarget
 };
