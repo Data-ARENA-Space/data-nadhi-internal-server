@@ -58,6 +58,16 @@ const findPipelineById = (pipelineId) => {
   return db.collection('Pipelines').findOne({ pipelineId });
 }
 
+const createPipelineNodesBulk = (nodesData) => {
+    const db = mongoService.db();
+    return db.collection('PipelineNodes').insertMany(nodesData);
+}
+
+const deletePipelineNodesByPipelineId = (organisationId, projectId, pipelineId) => {
+  const db = mongoService.db();
+  return db.collection('PipelineNodes').deleteMany({ organisationId, projectId, pipelineId });
+}
+
 module.exports = { 
   getProject, 
   getOrganisation, 
@@ -68,6 +78,8 @@ module.exports = {
   updateProject,
   updatePipeline,
   findProjectById,
+  deletePipelineNodesByPipelineId,
+  createPipelineNodesBulk,
   findPipelineById,
   getPipeline,
   mongoService 

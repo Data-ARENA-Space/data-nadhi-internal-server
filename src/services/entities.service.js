@@ -238,6 +238,29 @@ const updateStartNodeId = async (organisationId, projectId, pipelineId, startNod
   return true;
 }
 
+const createPipelineNodesBulk = async (organisationId, projectId, pipelineId, pipelineNodesObj) => {
+  const pipeline = await getPipelineById(organisationId, projectId, pipelineId);
+  if (!pipeline) {
+    throw new Error('Pipeline not found');
+  }
+
+  // First delete existing nodes for this pipeline
+  await mongoDal.deletePipelineNodesByPipelineId(organisationId, projectId, pipelineId);
+
+  // Now create new nodes
+  const nodesData = Object.entries(pipelineNodesObj).map(([nodeId, node]) => ({
+    nodeConfig: node,
+    nodeId,
+    pipelineId,
+    projectId,
+    organisationId
+  }));
+
+  // Bulk insert all nodes
+  await mongoDal.createPipelineNodesBulk(nodesData);
+  return nodesData.length;
+}
+
 module.exports = { 
   getOrganisationSecret, 
   getProjectSecret,
@@ -248,5 +271,6 @@ module.exports = {
   updateProjectProcessorId,
   updatePipelineProcessorId,
   updatePipelineActiveStatus,
-  updateStartNodeId
+  updateStartNodeId,
+  createPipelineNodesBulk
 };

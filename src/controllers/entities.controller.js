@@ -6,7 +6,8 @@ const {
   updateProjectProcessorId: updateProjectProcessorIdService,
   updatePipelineProcessorId: updatePipelineProcessorIdService,
   updatePipelineActiveStatus: updatePipelineActiveStatusService,
-  updateStartNodeId: updateStartNodeIdService
+  updateStartNodeId: updateStartNodeIdService,
+  createPipelineNodesBulk: createPipelineNodesBulkService
 } = require('../services/entities.service');
 const MongoService = require('../services/mongo.service');
 
@@ -191,6 +192,30 @@ const updateStartNodeId = async (req, res) => {
   }
 }
 
+const createPipelineNodesBulk = async (req, res) => {
+  try {
+    const { orgId, projectId, pipelineId } = req.params;
+    const pipelineNodesObj = req.body;
+
+    if (!pipelineNodesObj || typeof pipelineNodesObj !== 'object') {
+      return res.status(400).json({ error: 'pipelineNodesObj required in request body' });
+    }
+
+    const nodeCount = await mongo.withRetry(async () => {
+      return await createPipelineNodesBulkService(orgId, projectId, pipelineId, pipelineNodesObj);
+    });
+
+    res.json({ nodeCount, success: true });
+  } catch (err) {
+    console.error('Create Pipeline Nodes Bulk error:', err);
+    if (err.message.includes('not found')) {
+      res.status(404).json({ error: err.message });
+    } else {
+      res.status(500).json({ error: err.message });
+    }
+  }
+}
+
 module.exports = {
   createOrganisation,
   createProject,
@@ -199,5 +224,6 @@ module.exports = {
   updateProjectProcessorId,
   updatePipelineProcessorId,
   updatePipelineActiveStatus,
-  updateStartNodeId
+  updateStartNodeId,
+  createPipelineNodesBulk
 };
