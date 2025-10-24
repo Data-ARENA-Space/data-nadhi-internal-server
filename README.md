@@ -97,14 +97,6 @@ This repository contains utility APIs for **local development setup** for the sy
 
 ---
 
-### Build
-
-Build the static site for production:
-
-```bash
-npm run build
-```
-
 ## 🔗 Links
 
 - **Main Website**: [https://datanadhi.com](https://datanadhi.com)
